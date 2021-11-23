@@ -53,6 +53,7 @@ contract Exchange {
         uint256 timestamp
     );
 
+    //Data Model
     struct _Order {
         uint256 id;
         address user;
@@ -68,6 +69,7 @@ contract Exchange {
         feePercent = _feePercent;
     }
 
+    // Fallback: reverts if Ether is sent to this smart contract by mistake
     function() external {
         revert();
     }
@@ -80,7 +82,7 @@ contract Exchange {
     }
 
     function withdrawToken(address _token, uint256 _amount) public {
-        require(_token != address(0));
+        require(_token != ETHER);
         require(tokens[_token][msg.sender] >= _amount);
         tokens[_token][msg.sender] = tokens[_token][msg.sender].sub(_amount);
         require(Token(_token).transfer(msg.sender, _amount));
@@ -113,7 +115,6 @@ contract Exchange {
         address _tokenGive,
         uint256 _amountGive
     ) public {
-        require(_tokenGet != address(0));
         orderCount = orderCount.add(1);
         orders[orderCount] = _Order(
             orderCount,
@@ -152,9 +153,9 @@ contract Exchange {
     }
 
     function fillOrder(uint256 _orderId) public {
-        require(_orderId > 0 && _orderId <= orderCount);
-        require(!orderFilled[_orderId]);
-        require(!orderCancelled[_orderId]);
+        require(_orderId > 0 && _orderId <= orderCount, "Error, wrong id");
+        require(!orderFilled[_orderId], "Error, order already filled");
+        require(!orderCancelled[_orderId], "Error, order already cancelled");
         _Order storage _order = orders[_orderId];
         _trade(
             _order.id,
@@ -175,6 +176,7 @@ contract Exchange {
         address _tokenGive,
         uint256 _amountGive
     ) internal {
+        // Fee paid by the user that fills the order, a.k.a. msg.sender.
         uint256 _feeAmount = _amountGive.mul(feePercent).div(100);
 
         tokens[_tokenGet][msg.sender] = tokens[_tokenGet][msg.sender].sub(
