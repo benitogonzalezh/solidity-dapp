@@ -13,6 +13,7 @@ contract Exchange {
     mapping(uint256 => _Order) public orders;
     uint256 public orderCount;
     mapping(uint256 => bool) public orderCancelled;
+    mapping(uint256 => bool) public orderFilled;
 
     //Events
     event Deposit(address token, address user, uint256 amount, uint256 balance);
@@ -38,6 +39,17 @@ contract Exchange {
         uint256 amountGet,
         address tokenGive,
         uint256 amountGive,
+        uint256 timestamp
+    );
+
+    event Trade(
+        uint256 id,
+        address user,
+        address tokenGet,
+        uint256 amountGet,
+        address tokenGive,
+        uint256 amountGive,
+        address userFill,
         uint256 timestamp
     );
 
@@ -125,8 +137,8 @@ contract Exchange {
 
     function cancelOrder(uint256 _orderId) public {
         _Order storage _order = orders[_orderId];
-        require(orders[_orderId].user == msg.sender);
-        require(!orderCancelled[_orderId]);
+        require(_order.user == msg.sender);
+        require(_order.id == _orderId);
         orderCancelled[_orderId] = true;
         emit Cancel(
             _order.id,
@@ -135,6 +147,55 @@ contract Exchange {
             _order.amountGet,
             _order.tokenGive,
             _order.amountGive,
+            now
+        );
+    }
+
+    function fillOrder(uint256 _orderId) public {
+        require(_orderId > 0 && _orderId <= orderCount);
+        require(!orderFilled[_orderId]);
+        require(!orderCancelled[_orderId]);
+        _Order storage _order = orders[_orderId];
+        _trade(
+            _order.id,
+            _order.user,
+            _order.tokenGet,
+            _order.amountGet,
+            _order.tokenGive,
+            _order.amountGive
+        );
+        orderFilled[_orderId] = true;
+    }
+
+    function _trade(
+        uint256 _orderId,
+        address _user,
+        address _tokenGet,
+        uint256 _amountGet,
+        address _tokenGive,
+        uint256 _amountGive
+    ) internal {
+        uint256 _feeAmount = _amountGive.mul(feePercent).div(100);
+
+        tokens[_tokenGet][msg.sender] = tokens[_tokenGet][msg.sender].sub(
+            _amountGet.add(_feeAmount)
+        );
+        tokens[_tokenGet][_user] = tokens[_tokenGet][_user].add(_amountGet);
+        tokens[_tokenGet][feeAccount] = tokens[_tokenGet][feeAccount].add(
+            _feeAmount
+        );
+        tokens[_tokenGive][_user] = tokens[_tokenGive][_user].sub(_amountGive);
+        tokens[_tokenGive][msg.sender] = tokens[_tokenGive][msg.sender].add(
+            _amountGive
+        );
+        emit Trade(
+            _orderId,
+            _user,
+            _tokenGet,
+            _amountGet,
+            _tokenGive,
+            _amountGive,
+            msg.sender,
             now
         );
     }
