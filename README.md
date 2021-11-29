@@ -13,7 +13,7 @@
 ## About The Project
 
 <div>A complete exchange made with solidity.</div>
-<div>I made this to learn following a course about solidity and related technologies like web3, truffle, etc</div>
+<div>I made this following a course about solidity and related technologies like web3, truffle, etc</div>
 
 ### Built With
 
