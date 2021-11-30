@@ -7,14 +7,21 @@ import {
   cancelledOrdersLoaded,
   filledOrdersLoaded,
   allOrdersLoaded,
+  orderCancelling,
+  orderCancelled,
 } from "./actions";
 import Token from "../abis/Token.json";
 import Exchange from "../abis/Exchange.json";
 
 export const loadWeb3 = async (dispatch) => {
-  const web3 = new Web3("http://localhost:7545");
-  dispatch(web3Loaded(web3));
-  return web3;
+  if (typeof window.ethereum !== "undefined") {
+    const web3 = new Web3(window.ethereum);
+    dispatch(web3Loaded(web3));
+    return web3;
+  } else {
+    window.alert("Please install MetaMask");
+    window.location.assign("https://metamask.io/");
+  }
 };
 
 export const loadAccount = async (web3, dispatch) => {
@@ -91,4 +98,23 @@ export const loadAllOrders = async (exchange, dispatch) => {
   const allOrders = orderStream.map((event) => event.returnValues);
   // Add open orders to the redux store
   dispatch(allOrdersLoaded(allOrders));
+};
+
+export const cancelOrder = (dispatch, exchange, order, account) => {
+  exchange.methods
+    .cancelOrder(order.id)
+    .send({ from: account })
+    .on("transactionHash", (hash) => {
+      dispatch(orderCancelling());
+    })
+    .on("error", (error) => {
+      console.log(error);
+      window.alert("There was an error!");
+    });
+};
+
+export const subscribeToEvents = async (exchange, dispatch) => {
+  exchange.events.Cancel({}, (error, event) => {
+    dispatch(orderCancelled(event.returnValues));
+  });
 };
