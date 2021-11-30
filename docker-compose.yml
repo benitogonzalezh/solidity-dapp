@@ -1,6 +1,18 @@
 version: "3.8"
 
 services:
+  ganache:
+    container_name: ganache
+    image: trufflesuite/ganache-cli:latest
+    command: --chainId=1336
+    ports:
+      - "7545:8545"
+    healthcheck:
+      test: wget --post-data '{"id":1337,"jsonrpc":"2.0","method":"eth_accounts","params":[]}' -S -O - http://localhost:8545 || exit 1
+      interval: 10s
+      timeout: 30s
+      retries: 5
+      start_period: 20s
   dapp:
     container_name: dapp
     build: .
@@ -9,10 +21,8 @@ services:
       - .:/dapp/
     ports:
       - "3000:3000"
-    command: tail -F anything
-  ganache:
-    container_name: ganache
-    image: trufflesuite/ganache-cli:latest
-    command: --chainId=1336
-    ports:
-      - "7545:8545"
+    depends_on:
+      ganache:
+        condition: service_healthy
+    command: bash -c "truffle migrate --reset && truffle exec scripts/seed-exchange.js && npm start"
+    tty: true
